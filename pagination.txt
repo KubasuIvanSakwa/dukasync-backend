@@ -1,0 +1,54 @@
+export const AllProducts = async (req, res, next) => {
+    try {
+        const { page = 1, limit = 10, category, minPrice, maxPrice } = req.query;
+
+        // Build a dynamic query object
+        const query = {};
+        if (category) query.category = category;
+        if (minPrice || maxPrice) {
+            query.price = { 
+                ...(minPrice && { $gte: Number(minPrice) }), 
+                ...(maxPrice && { $lte: Number(maxPrice) }) 
+            };
+        }
+
+        const products = await Product.find(query)
+            .limit(limit * 1)
+            .skip((page - 1) * limit)
+            .sort({ createdAt: -1 }); // Newest first
+
+        const total = await Product.countDocuments(query);
+
+        res.status(200).json({ 
+            success: true, 
+            data: products,
+            pagination: {
+                total,
+                page: Number(page),
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+coming up
+Cloud Storage: Currently, you store image URLs as strings. You will eventually need to integrate Multer and a service like Cloudinary to handle actual file uploads.
+
+Search & Pagination: You have a pagination.txt file ready, which is a great next step. Real stores need to filter thousands of products by price, brand, or rating.
+
+Payment Processing: The Order controller needs to be linked to a gateway (Stripe/Flutterwave) to verify payments before finalizing a transaction.
+
+Input Validation: Moving your if (!name || !price) checks into a dedicated validation schema (like Zod) would make your controllers much cleaner and easier to maintain.
+
+To handle actual images, you need to add a middleware called Multer and a storage service like Cloudinary or AWS S3. You should never store actual image files directly in your MongoDB database because it will make the database extremely slow and bloated.
+
+Frontend: Sends a multipart/form-data request containing the image files.
+
+Multer Middleware: Intercepts the request, parses the files, and temporarily stores them.
+
+Cloudinary/S3: You upload the files from Multer to a cloud service.
+
+Your Controller: Receives the URL strings back from the cloud and saves those into MongoDB.
