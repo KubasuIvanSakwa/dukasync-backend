@@ -7,14 +7,12 @@ import Order from "../models/order.model.js";
 import { Queue } from "bullmq";
 import Redis from "ioredis";
 
-// Force IPv4 and handle TLS for Windows/Upstash compatibility
 const redisConnection = new Redis(process.env.REDIS_URI, {
     maxRetriesPerRequest: null,
-    family: 4, // 👈 This fixes the infinite hanging issue!
+    family: 4, 
     tls: { rejectUnauthorized: false } 
 });
 
-// Add logs so you know exactly when Redis is ready
 redisConnection.on('connect', () => console.log('🟢 [Order Controller] Redis connected successfully!'));
 redisConnection.on('error', (err) => { if (err.code !== 'ECONNRESET') console.error('🔴 Redis Error:', err.message); });
 
@@ -128,5 +126,17 @@ export const createOrder = async (req, res, next) => {
         await session.abortTransaction()
         session.endSession()
         next(error)
+    }
+}
+
+export const getOrdersById = async (req, res) => {
+    try {
+        const orders = await Order.find({ user: req.params.userId })
+            .populate('items.productId') 
+            .sort({ createdAt: -1 })
+            
+        res.status(200).json({ success: true, data: orders });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 }
