@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authorize } from "../middleware/auth.middleware.js";
-import { createOrder, getOrdersById } from "../controllers/order.controller.js";
+import { createOrder, getAllOrdersAdmin, getOrdersById } from "../controllers/order.controller.js";
 
 
 const orderRouter = Router()
