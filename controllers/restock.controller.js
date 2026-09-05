@@ -25,7 +25,21 @@ export const createRestockOrder = async (req, res, next) => {
       throw error;
     }
 
-    // Create the restock order
+    const existingActiveRestock = await Restock.findOne({
+      product: product,
+      status: { $in: ["PENDING", "CONFIRMED"] }
+    }).session(session);
+
+    if (existingActiveRestock) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(200).json({
+        success: true,
+        message: "Restock already in progress. Duplicate request ignored.",
+        data: existingActiveRestock,
+      });
+    }
+
     const newRestock = await Restock.create(
       [{ product, supplier, quantityRequested, idempotencyKey }],
       { session }
@@ -33,7 +47,6 @@ export const createRestockOrder = async (req, res, next) => {
 
     const restockId = newRestock[0]._id;
 
-    // Push the new restock ID into both the Product and Supplier relationship arrays
     await Product.findByIdAndUpdate(
       product,
       { $push: { restockOrders: restockId } },
@@ -57,7 +70,6 @@ export const createRestockOrder = async (req, res, next) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    // Handle duplicate idempotencyKey error from MongoDB
     if (error.code === 11000) {
       error.message = "A restock order with this idempotency key already exists.";
       error.statusCode = 409;
