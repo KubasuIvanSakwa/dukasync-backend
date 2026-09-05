@@ -131,7 +131,7 @@ export const createOrder = async (req, res, next) => {
 
 export const getOrdersById = async (req, res) => {
     try {
-        const orders = await Order.find({ user: req.params.Id })
+        const orders = await Order.find({ user: req.params.id })
             .populate('items.productId') 
             .sort({ createdAt: -1 })
             
